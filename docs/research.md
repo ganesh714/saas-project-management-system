@@ -1,123 +1,78 @@
-# Multi-Tenant SaaS Platform Research Document
+# Multi-Tenant SaaS Platform - Research & Analysis
 
-## 1. Multi-Tenancy Architecture Analysis
+## 1. Multi-Tenancy Analysis
 
-Multi-tenancy is the foundational architecture where a single instance of a software application serves multiple customers (tenants). Each tenant's data must remain isolated and invisible to other tenants. Choosing the right multi-tenancy model is a critical architectural decision that impacts scalability, cost, and maintenance.
+### Overview
+Multi-tenancy is a software architecture where a single instance of software serves multiple tenants (customers). Each tenant's data must be isolated and invisible to other tenants.
 
-We have analyzed the three primary models for database multi-tenancy:
+### Comparison of Approaches
 
-### 1.1 Approach 1: Separate Database per Tenant
-In this model, each tenant is provisioned their own completely separate database instance. The application maintains a catalog of which database connection string belongs to which tenant.
-
-**Pros:**
-*   **Ultimate Isolation:** Data leakage between tenants is virtually impossible at the database layer.
-*   **Security:** High-security compliance (e.g., HIPAA, GDPR) is easier to achieve.
-*   **Backup/Restore:** Allows for "Point-in-Time" recovery for a specific tenant without affecting others.
-*   **No "Noisy Neighbor" Effect:** Resource usage by one tenant does not impact the query performance of others.
-
-**Cons:**
-*   **Maintenance Nightmare:** Running migrations (schema updates) requires iterating through potentially thousands of databases. If a migration fails on DB #500, the system enters an inconsistent state.
-*   **Infrastructure Cost:** High resource overhead. Each database consumes memory and connection pools, even for idle tenants.
-*   **Scalability:** Connection pooling becomes a bottleneck on the database server as the number of tenants grows.
-
-### 1.2 Approach 2: Shared Database, Separate Schema
-Here, all tenants share a single database instance, but each tenant gets their own named **Schema** (namespace) within that database.
-
-**Pros:**
-*   **Good Isolation:** Logical separation is enforced at the schema level.
-*   **Shared Resources:** More cost-effective than separate databases; connection pools are shared.
-*   **Manageability:** Backups can still be somewhat granular (schema-level dumps).
-
-**Cons:**
-*   **Migration Complexity:** Similar to the separate database model, schema changes must be applied to every schema individually.
-*   **Cross-Tenant Analytics:** Aggregating data across tenants (e.g., for a "Super Admin" dashboard) is difficult and often requires complex Union queries.
-
-### 1.3 Approach 3: Shared Database, Shared Schema (Tenant Discriminator)
-In this model, all tenants share the same database and the same tables. Every table containing tenant-specific data has a `tenant_id` column (the discriminator).
-
-**Pros:**
-*   **Lowest Cost:** Maximizes resource utilization. Best for "Freemium" models where many tenants might be small or inactive.
-*   **Simplicity:** Only one database to maintain, back up, and migrate.
-*   **Standard Tooling:** Works out-of-the-box with standard ORMs and reporting tools.
-*   **Easy Analytics:** Cross-tenant reporting is as simple as running a query without the `tenant_id` filter (for Super Admins).
-
-**Cons:**
-*   **Isolation Risk:** Relies entirely on the application code to enforce security. A developer forgetting a `WHERE tenant_id = ?` clause causes data leakage.
-*   **Backup Difficulty:** restoring a single tenant's data is complex; requires extracting specific rows.
-
-### 1.4 Comparison Table
-
-| Feature | Separate Database | Separate Schema | Shared Schema (Discriminator) |
+| Feature | Shared Database + Shared Schema | Shared Database + Separate Schema | Separate Database |
 | :--- | :--- | :--- | :--- |
-| **Isolation Level** | Highest (Physical) | High (Logical) | Medium (Application Level) |
-| **Infrastructure Cost** | High | Medium | **Low** |
-| **Scalability (Tenants)** | Low (Resource intensive) | Medium | **High** |
-| **Migration Complexity**| High | High | **Low** |
-| **Development Speed** | Slow (Complex DevOps) | Medium | **Fast** |
-| **Data Leakage Risk** | Near Zero | Low | Moderate (Requires safeguards) |
+| **Isolation** | Lowest (Row-level) | Medium (Schema-level) | Highest (Database-level) |
+| **Cost** | Low (Single DB instance) | Medium | High (Multiple DB instances) |
+| **Scalability** | High (Vertical/Horizontal) | Medium | Low (Resource intensive) |
+| **Complexity** | High (App-level filtering) | Medium (Schema management) | Low (App logic), High (DevOps) |
+| **Migration** | Easy (Single schema) | Medium (Per schema) | Hard (Per database) |
+| **Performance** | Good (Shared resources) | Good (Isolated tables) | Best (Isolated resources) |
+| **Maintenance** | Easy | Medium | Hard |
 
-### 1.5 Chosen Approach & Justification
-For this project, we have selected **Approach 3: Shared Database, Shared Schema**.
+### Chosen Approach: Shared Database + Shared Schema (with `tenant_id`)
 
 **Justification:**
-1.  **Cost Efficiency:** As a SaaS platform offering a "Free Tier," we expect a high volume of low-activity tenants. Spinning up a database per free user is financially unviable.
-2.  **MVP Velocity:** The shared schema approach simplifies the initial development and deployment pipeline. We only need to manage one set of migrations.
-3.  **Modern Mitigation:** The main risk (Data Leakage) is mitigated by enforcing **Middleware-Level Isolation**. We do not rely on developers manually adding filters. Instead, a global interceptor in our ORM and API layer automatically injects the `tenant_id` into every query context, ensuring data safety.
-4.  **Tech Stack Fit:** PostgreSQL handles large tables with millions of rows efficiently, especially when properly indexed on the `tenant_id` column.
+For this project, we have selected the **Shared Database + Shared Schema** approach. This decision is based on:
+1.  **Cost-Efficiency:** Running a single database instance is cost-effective and suitable for a project management SaaS where tenants might be small to medium businesses.
+2.  **Scalability:** It allows for easy onboarding of new tenants without the overhead of creating new schemas or databases.
+3.  **Modern tooling:** ORMs and middleware make it easier to enforce row-level security and `tenant_id` filtering, mitigating the complexity drawback.
+4.  **Resource Utilization:** Efficient use of database connections and resources compared to separate databases.
 
----
+This approach requires strict application-level security to ensure data isolation, which we will implement via middleware and rigorous testing.
 
 ## 2. Technology Stack Justification
 
-### 2.1 Backend: Node.js & Express
-We chose **Node.js** over alternatives like Python (Django/Flask) or Java (Spring Boot).
-*   **Non-Blocking I/O:** Node's event-driven architecture handles high concurrency with low overhead, making it ideal for the I/O-heavy nature of a project management tool (many small read/write requests).
-*   **Unified Language:** Using JavaScript/TypeScript on both frontend and backend reduces context switching for developers and allows code sharing (e.g., validation schemas, types).
-*   **Ecosystem:** The NPM ecosystem provides robust, battle-tested libraries for multi-tenancy requirements, such as `jsonwebtoken` for auth, `sequelize` for ORM, and `winston` for logging.
+### Backend: Node.js + Express
+-   **Why:** Node.js offers a non-blocking, event-driven architecture perfect for I/O-heavy applications like a SaaS platform. Express is a minimalist, flexible framework with a vast ecosystem of middleware (Auth, Security, Logging).
+-   **Alternatives:** Python/Django (Too heavy), Go (Higher learning curve for this scope).
 
-### 2.2 Frontend: React
-We chose **React** (via Vite) over Angular or Vue.
-*   **Component Architecture:** The UI requirements (Kanban boards, project lists, dashboards) are highly interactive and component-driven. React's reusable component model speeds up development.
-*   **Performance:** The Virtual DOM ensures that real-time updates (e.g., dragging a task ticket) are rendered efficiently without repainting the entire page.
-*   **State Management:** React's Context API provides a lightweight solution for managing global state like "Current Tenant" and "User Profile," avoiding the complexity of Redux for this scope.
+### Frontend: React + Vite
+-   **Why:** React is the industry standard for building dynamic user interfaces. Vite provides a lightning-fast development experience. The component-based architecture suits the dashboard/project management UI perfectly.
+-   **Alternatives:** Angular (Too verbose), Vue (Good, but React has larger ecosystem).
 
-### 2.3 Database: PostgreSQL
-We chose **PostgreSQL** over MySQL or NoSQL (MongoDB).
-*   **Relational Integrity:** A Project Management System relies on strict relationships (Tenants → Users → Projects → Tasks). Relational databases enforce these constraints (Foreign Keys, CASCADE deletes) natively, ensuring data consistency.
-*   **JSONB Support:** PostgreSQL offers best-in-class support for storing unstructured data (e.g., flexible task metadata or logs) alongside structured relational data.
-*   **Row-Level Security (RLS):** While we are implementing isolation at the application layer, Postgres has native RLS capabilities that can be leveraged in the future for "Defense in Depth."
+### Database: PostgreSQL
+-   **Why:** Postgres is a powerful, open-source relational database with strong support for complex queries, transactions, and JSON capabilities. It is ideal for structured data like users, projects, and tasks.
+-   **Alternatives:** MongoDB (Not suitable for relational data requirements of this project), MySQL (Postgres offers better advanced features).
 
-### 2.4 DevOps: Docker & Docker Compose
-*   **Reproducibility:** Docker ensures the application runs exactly the same on a developer's Localhost as it does in production. This eliminates "it works on my machine" issues.
-*   **Isolation:** Each service (Backend, Frontend, DB) runs in its own container, preventing dependency conflicts.
-*   **Orchestration:** Docker Compose is mandatory for this project to ensure the complex multi-service architecture can be spun up with a single command (`docker-compose up -d`), greatly simplifying the evaluation and deployment process.
+### Authentication: JWT (JSON Web Tokens)
+-   **Why:** Stateless authentication scales well. Tokens can carry payload (user ID, tenant ID, role) decreasing database lookups for session validation.
+-   **Alternatives:** Session-based (Requires server-side storage, less scalable).
 
----
+### Containerization: Docker & Docker Compose
+-   **Why:** Ensures consistency across development and production environments. Simplifies deployment of the multi-service architecture (Frontend, Backend, DB).
 
 ## 3. Security Considerations
 
-Building a multi-tenant platform requires a "Security First" mindset. Failure here leads to the worst possible outcome: data co-mingling.
+### 1. Data Isolation
+-   **Strategy:** Strict filtering by `tenant_id` on all database queries.
+-   **Implementation:** Middleware will extract `tenant_id` from the JWT and inject it into the request context. ORM scopes or service-layer logic will mandatorily include `WHERE tenant_id = ?`.
 
-### 3.1 Data Isolation Strategy
-This is the most critical security requirement.
-*   **Tenant Context:** Upon every request, a middleware intercepts the JWT token, verifies it, extracts the `tenant_id`, and attaches it to the request object (`req.tenantId`).
-*   **Query Injection:** All database Service layers are designed to require `tenantId` as a mandatory argument. The ORM configuration is set to reject queries that do not have a `where: { tenantId }` clause (where applicable), acting as a fail-safe.
-*   **Validation:** Input validation (via Joi) ensures that a user cannot spoof a `tenant_id` in the request body. We implicitly trust the token, not the user input.
+### 2. Authentication & Authorization
+-   **Strategy:** robust RBAC (Role-Based Access Control).
+-   **Implementation:**
+    -   JWTs signed with strong secrets.
+    -   Roles: Super Admin, Tenant Admin, User.
+    -   Middleware to enforce role permissions on every protected route.
 
-### 3.2 Authentication & Authorization (RBAC)
-*   **JWT (JSON Web Tokens):** We use stateless authentication. The token payload contains `{ userId, tenantId, role }`. This avoids database lookups for every request to check session validity.
-*   **Role-Based Access Control:**
-    *   **Super Admin:** Has global access (tenantId is null). Can manage subscriptions.
-    *   **Tenant Admin:** Can manage users and projects within their tenant.
-    *   **User:** Can only manage tasks assigned to them to view projects they are part of.
-    *   *Implementation:* Middleware checks `req.user.role` against allowed roles for each endpoint.
+### 3. Password Security
+-   **Strategy:** Hashing and Salting.
+-   **Implementation:** Use `bcrypt` or `argon2`. Never store plain-text passwords. Enforce minimum password complexity requirements.
 
-### 3.3 Data Protection
-*   **Password Hashing:** Passwords are never stored in plain text. We use **Bcrypt** with a salt round of 10. This makes rainbow table attacks infeasible.
-*   **HTTPS/TLS:** In production, all traffic must be encrypted.
-*   **Environment Variables:** Sensitive secrets (DB passwords, JWT secrets) are injected via Docker environment variables, never hardcoded in the source.
+### 4. API Security
+-   **Strategy:** Input Validation & Rate Limiting.
+-   **Implementation:**
+    -   Validate all request bodies (e.g., using `zod` or `joi`).
+    -   Implement global error handling to prevent leaking implementation details.
+    -   CORS configuration to allow only trusted frontend origins.
 
-### 3.4 API Security (Hardening)
-*   **Rate Limiting:** We implement `express-rate-limit` to prevent brute-force attacks on login endpoints and DDoS attacks on public APIs.
-*   **Helmet:** We use the `helmet` middleware to set secure HTTP headers (e.g., HSTS, X-Frame-Options, X-XSS-Protection) to prevent common browser vulnerabilities like Clickjacking.
-*   **CORS (Cross-Origin Resource Sharing):** Strictly configured to allow requests only from the trusted frontend domain/container, blocking malicious scripts from other sites.
+### 5. Audit Logging
+-   **Strategy:** Track critical actions.
+-   **Implementation:** Record `who`, `what`, `when`, and `where` for sensitive operations (User creation, Project deletion, etc.) in an `audit_logs` table. This aids in tracing security incidents.
