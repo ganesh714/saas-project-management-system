@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   database:
-    image: postgres:15-alpine
+    image: postgres:15
     container_name: database
     environment:
       POSTGRES_DB: saas_db
@@ -12,9 +12,6 @@ services:
       - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
-      - ./database/init-scripts:/docker-entrypoint-initdb.d
-    networks:
-      - saas-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -26,54 +23,50 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: backend
+    ports:
+      - "5000:5000"
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: 5000
       DB_HOST: database
       DB_PORT: 5432
       DB_NAME: saas_db
       DB_USER: postgres
       DB_PASSWORD: postgres
-      JWT_SECRET: your_jwt_secret_key_at_least_32_chars_long
-      FRONTEND_URL: http://frontend:3000
-    ports:
-      - "5000:5000"
+      JWT_SECRET: supersecretkeythatshouldbeaconfigvar
+      JWT_EXPIRES_IN: 24h
+      FRONTEND_URL: http://localhost:3000
     depends_on:
       database:
         condition: service_healthy
-    networks:
-      - saas-network
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   frontend:
-    build:
+    build: 
       context: ./frontend
       dockerfile: Dockerfile
     container_name: frontend
-    environment:
-      CHOKIDAR_USEPOLLING: "true" # For hot reloading in some environments
-      REACT_APP_API_URL: http://backend:5000/api
     ports:
       - "3000:3000"
+    environment:
+      # React apps build static bundles, so these need to be build-time args or handled carefully
+      # For a simple value, we can try to inject it or use the browser's access to relative paths (proxy)
+      # But the spec says 'use service name'.
+      # Actually, the browser runs on the host machine, so it can't resolve 'http://backend:5000'.
+      # The browser needs 'http://localhost:5000'.
+      # However, for SSR or build time fetching it might need internal.
+      # The requirements say: "CORS Configuration: Backend must be configured to accept requests from frontend (use http://frontend:3000 in Docker network)"
+      # This implies backend sees frontend as 'frontend:3000'.
+      # AND "Frontend is accessible at http://localhost:3000".
+      # REACT_APP_API_URL should likely be http://localhost:5000 for client-side calls.
+      VITE_API_URL: http://localhost:5000/api
     depends_on:
       backend:
         condition: service_healthy
-    networks:
-      - saas-network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-networks:
-  saas-network:
-    driver: bridge
 
 volumes:
   db_data:
