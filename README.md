@@ -35,3 +35,4 @@ See `docs/` folder for:
 - [Architecture](docs/architecture.md)
 - [PRD](docs/PRD.md)
 - [Technical Spec](docs/technical-spec.md)
+- [API Documentation](docs/API.md)
