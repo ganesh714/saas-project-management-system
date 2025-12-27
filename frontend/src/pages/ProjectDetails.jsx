@@ -1,0 +1,204 @@
+import React, { useEffect, useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
+
+const ProjectDetails = () => {
+    const { projectId } = useParams();
+    const { user } = useAuth();
+    const [project, setProject] = useState(null);
+    const [tasks, setTasks] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [showTaskModal, setShowTaskModal] = useState(false);
+    const [newTask, setNewTask] = useState({ title: '', description: '', priority: 'medium', dueDate: '', assignedTo: '' });
+    // User list for assignment
+    const [users, setUsers] = useState([]);
+
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const [projRes, tasksRes] = await Promise.all([
+                api.get(`/projects/${projectId}`), // Assuming this endpoint exists and works
+                api.get(`/projects/${projectId}/tasks?limit=100`)
+            ]);
+            setProject(projRes.data.data || projRes.data); // Adjust based on controller return
+            setTasks(tasksRes.data.data.tasks);
+
+            // Fetch users for assignment if admin
+            if (user.role === 'tenant_admin') {
+                const usersRes = await api.get(`/tenants/${user.tenantId}/users?limit=100`);
+                setUsers(usersRes.data.data.users);
+            }
+        } catch (err) {
+            console.error(err);
+        }
+        setLoading(false);
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, [projectId]);
+
+    const handleCreateTask = async (e) => {
+        e.preventDefault();
+        try {
+            await api.post(`/projects/${projectId}/tasks`, newTask);
+            setShowTaskModal(false);
+            setNewTask({ title: '', description: '', priority: 'medium', dueDate: '', assignedTo: '' });
+            fetchData();
+        } catch (err) {
+            alert('Failed to create task');
+        }
+    };
+
+    const handleStatusChange = async (taskId, newStatus) => {
+        try {
+            await api.patch(`/tasks/${taskId}/status`, { status: newStatus });
+            // Optimistic update or refresh
+            setTasks(tasks.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
+        } catch (err) {
+            alert('Failed to update status');
+        }
+    };
+
+    const handleDeleteTask = async (taskId) => {
+        if (!window.confirm('Are you sure?')) return;
+        try {
+            await api.delete(`/tasks/${taskId}`);
+            setTasks(tasks.filter(t => t.id !== taskId));
+        } catch (err) {
+            alert('Failed to delete task');
+        }
+    };
+
+    if (loading) return <div className="spinner"></div>;
+    if (!project) return <div>Project not found</div>;
+
+    return (
+        <div className="container">
+            <div style={{ marginBottom: '2rem' }}>
+                <Link to="/projects" style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>&larr; Back to Projects</Link>
+                <div className="flex-between" style={{ marginTop: '1rem' }}>
+                    <div>
+                        <h1>{project.name}</h1>
+                        <p style={{ color: 'var(--text-secondary)' }}>{project.description}</p>
+                    </div>
+                    <div>
+                        <button className="btn btn-primary" onClick={() => setShowTaskModal(true)}>+ Add Task</button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Task List */}
+            <div className="card">
+                <table className="table">
+                    <thead>
+                        <tr>
+                            <th>Task</th>
+                            <th>Assignee</th>
+                            <th>Priority</th>
+                            <th>Due Date</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {tasks.length === 0 ? <tr><td colSpan="6" style={{ textAlign: 'center' }}>No tasks yet</td></tr> : tasks.map(task => (
+                            <tr key={task.id}>
+                                <td>
+                                    <div style={{ fontWeight: '500' }}>{task.title}</div>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{task.description}</div>
+                                </td>
+                                <td>
+                                    {task.assignedTo ? (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem' }}>
+                                                {task.assignedTo.fullName.charAt(0)}
+                                            </div>
+                                            {task.assignedTo.fullName}
+                                        </div>
+                                    ) : <span style={{ color: 'var(--text-secondary)' }}>Unassigned</span>}
+                                </td>
+                                <td>
+                                    <span style={{
+                                        color: task.priority === 'high' ? 'var(--danger)' : task.priority === 'medium' ? 'var(--warning)' : 'var(--success)',
+                                        textTransform: 'capitalize'
+                                    }}>{task.priority}</span>
+                                </td>
+                                <td>{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '-'}</td>
+                                <td>
+                                    <select
+                                        value={task.status}
+                                        onChange={(e) => handleStatusChange(task.id, e.target.value)}
+                                        className="input-field"
+                                        style={{ padding: '0.25rem', fontSize: '0.875rem', width: 'auto' }}
+                                    >
+                                        <option value="todo">To Do</option>
+                                        <option value="in_progress">In Progress</option>
+                                        <option value="completed">Completed</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <button onClick={() => handleDeleteTask(task.id)} className="btn" style={{ color: 'var(--danger)', padding: '0.25rem' }}>Delete</button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            {/* Task Modal */}
+            {showTaskModal && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+                }}>
+                    <div className="card glass" style={{ width: '500px', maxWidth: '90%' }}>
+                        <h2>Add Task</h2>
+                        <form onSubmit={handleCreateTask}>
+                            <div className="input-group">
+                                <label className="input-label">Title</label>
+                                <input className="input-field" value={newTask.title} onChange={e => setNewTask({ ...newTask, title: e.target.value })} required />
+                            </div>
+                            <div className="input-group">
+                                <label className="input-label">Description</label>
+                                <textarea className="input-field" value={newTask.description} onChange={e => setNewTask({ ...newTask, description: e.target.value })} />
+                            </div>
+                            <div style={{ display: 'flex', gap: '1rem' }}>
+                                <div className="input-group" style={{ flex: 1 }}>
+                                    <label className="input-label">Priority</label>
+                                    <select className="input-field" value={newTask.priority} onChange={e => setNewTask({ ...newTask, priority: e.target.value })}>
+                                        <option value="low">Low</option>
+                                        <option value="medium">Medium</option>
+                                        <option value="high">High</option>
+                                    </select>
+                                </div>
+                                <div className="input-group" style={{ flex: 1 }}>
+                                    <label className="input-label">Due Date</label>
+                                    <input type="date" className="input-field" value={newTask.dueDate} onChange={e => setNewTask({ ...newTask, dueDate: e.target.value })} />
+                                </div>
+                            </div>
+                            {user.role === 'tenant_admin' && (
+                                <div className="input-group">
+                                    <label className="input-label">Assign To</label>
+                                    <select className="input-field" value={newTask.assignedTo} onChange={e => setNewTask({ ...newTask, assignedTo: e.target.value })}>
+                                        <option value="">-- Unassigned --</option>
+                                        {users.map(u => (
+                                            <option key={u.id} value={u.id}>{u.full_name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+                            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+                                <button type="button" className="btn" style={{ background: 'transparent', border: '1px solid var(--border-color)', color: 'white' }} onClick={() => setShowTaskModal(false)}>Cancel</button>
+                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Create Task</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default ProjectDetails;
