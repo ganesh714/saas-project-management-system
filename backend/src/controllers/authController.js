@@ -118,14 +118,19 @@ exports.login = async (req, res) => {
         let targetTenantSubdomain = tenantSubdomain;
 
         if (tenantSubdomain) {
-            const tenantRes = await pool.query('SELECT id, status FROM tenants WHERE subdomain = $1', [tenantSubdomain]);
-            if (tenantRes.rowCount === 0) {
-                return res.status(404).json({ success: false, message: 'Tenant not found' });
+            // Special Case: System/Super Admin Login
+            if (tenantSubdomain === 'system') {
+                targetTenantId = null;
+            } else {
+                const tenantRes = await pool.query('SELECT id, status FROM tenants WHERE subdomain = $1', [tenantSubdomain]);
+                if (tenantRes.rowCount === 0) {
+                    return res.status(404).json({ success: false, message: 'Tenant not found' });
+                }
+                if (tenantRes.rows[0].status === 'suspended') {
+                    return res.status(403).json({ success: false, message: 'Tenant is suspended' });
+                }
+                targetTenantId = tenantRes.rows[0].id;
             }
-            if (tenantRes.rows[0].status === 'suspended') {
-                return res.status(403).json({ success: false, message: 'Tenant is suspended' });
-            }
-            targetTenantId = tenantRes.rows[0].id;
         } else if (tenantId) {
             // ... find tenant by ID
             targetTenantId = tenantId;

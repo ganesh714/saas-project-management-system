@@ -33,7 +33,7 @@ const Dashboard = () => {
                 setStats(s => ({ ...s, totalProjects: totalProj }));
 
                 // Tenant Admin Stats
-                if (user.role === 'tenant_admin' || user.role === 'super_admin') {
+                if ((user.role === 'tenant_admin' || user.role === 'super_admin') && user.tenantId) {
                     try {
                         const tenantRes = await api.get(`/tenants/${user.tenantId}`);
                         const tStats = tenantRes.data.data.stats;
