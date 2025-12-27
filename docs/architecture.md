@@ -1,99 +1,119 @@
-# System Architecture Document
+# System Architecture
 
 ## 1. High-Level Architecture
 
-The Multi-Tenant SaaS Platform follows a classic 3-Tier Layered Architecture designed for separation of concerns, scalability, and maintainability.
+The system follows a typical 3-tier architecture containerized with Docker.
 
-### 1.1 Architecture Layers
-1.  **Presentation Layer (Client):**
-    *   **Technology:** React.js (Single Page Application).
-    *   **Responsibility:** Renders the user interface, manages client-side state (Auth Context), and communicates with the backend via REST APIs.
-2.  **Application Layer (Server):**
-    *   **Technology:** Node.js with Express.
-    *   **Responsibility:** Handles business logic, RBAC enforcement, Tenant Isolation middleware, and request validation.
-3.  **Data Layer (Database):**
-    *   **Technology:** PostgreSQL.
-    *   **Responsibility:** Persists data with strict referential integrity. Stores relationally mapped data for Tenants, Users, Projects, etc.
+```mermaid
+graph TD
+    Client[Client Browser] -->|HTTP/REST| LB[Nginx/Load Balancer]
+    LB -->|Port 3000| Frontend[React Frontend Container]
+    LB -->|Port 5000| Backend[Node.js Backend Container]
+    Backend -->|Port 5432| DB[PostgreSQL Container]
+    
+    subgraph Docker Network
+        Frontend
+        Backend
+        DB
+    end
+```
 
-### 1.2 Container Architecture (Docker)
-The system is deployed as a set of isolated containers orchestrated via Docker Compose:
+## 2. Database Schema (ERD)
 
-*   **Service: Frontend (`frontend`)**
-    *   Exposed Port: `3000`
-    *   Interacts with: Backend Service (via HTTP).
-*   **Service: Backend (`backend`)**
-    *   Exposed Port: `5000`
-    *   Interacts with: Database Service.
-*   **Service: Database (`database`)**
-    *   Exposed Port: `5432`
-    *   Data Persistence: Docker Volume (`db_data`).
+```mermaid
+erDiagram
+    TENANTS ||--o{ USERS : has
+    TENANTS ||--o{ PROJECTS : owns
+    TENANTS ||--o{ AUDIT_LOGS : generates
+    PROJECTS ||--o{ TASKS : contains
+    USERS ||--o{ TASKS : assigned_to
+    USERS ||--o{ PROJECTS : created_by
 
----
+    TENANTS {
+        uuid id PK
+        string name
+        string subdomain UK
+        enum status
+        enum subscription_plan
+        int max_users
+        int max_projects
+        timestamp created_at
+    }
 
-## 2. Database Design (Schema)
+    USERS {
+        uuid id PK
+        uuid tenant_id FK
+        string email
+        string password_hash
+        string full_name
+        enum role
+        boolean is_active
+    }
 
-The database follows a **Shared Schema** multi-tenancy model. The `Tenants` table is the root entity. Almost every other entity links back to a Tenant via the `tenant_id` Foreign Key.
+    PROJECTS {
+        uuid id PK
+        uuid tenant_id FK
+        string name
+        text description
+        enum status
+        uuid created_by FK
+    }
 
-### 2.1 Entity Relationships (ERD Description)
+    TASKS {
+        uuid id PK
+        uuid project_id FK
+        uuid tenant_id FK
+        string title
+        text description
+        enum status
+        enum priority
+        uuid assigned_to FK
+        date due_date
+    }
 
-#### Table: Tenants
-*   **Description:** The root organization unit.
-*   **Columns:** `id` (PK), `name`, `subdomain` (Unique), `status`, `plan`, `max_users`, `max_projects`.
-*   **Relationships:** One Tenant has many Users, Projects, and Tasks.
+    AUDIT_LOGS {
+        uuid id PK
+        uuid tenant_id FK
+        uuid user_id FK
+        string action
+        string entity_type
+        string entity_id
+        timestamp created_at
+    }
+```
 
-#### Table: Users
-*   **Description:** System actors.
-*   **Columns:** `id` (PK), `tenant_id` (FK), `email`, `password_hash`, `role` (super_admin, tenant_admin, user), `is_active`.
-*   **Isolation:** `tenant_id` ensures users belong to exactly one organization (except Super Admins).
+## 3. API Architecture
 
-#### Table: Projects
-*   **Description:** A container for tasks.
-*   **Columns:** `id` (PK), `tenant_id` (FK), `created_by` (FK -> Users), `name`, `description`, `status`.
-*   **Relationships:** Belongs to Tenant. Belongs to Creator (User). Has many Tasks.
+### Authentication
+- `POST /api/auth/register-tenant` (Public)
+- `POST /api/auth/login` (Public)
+- `GET /api/auth/me` (Auth Required)
+- `POST /api/auth/logout` (Auth Required)
 
-#### Table: Tasks
-*   **Description:** The unit of work.
-*   **Columns:** `id` (PK), `tenant_id` (FK), `project_id` (FK -> Projects), `assigned_to` (FK -> Users), `title`, `status`, `priority`.
-*   **Relationships:** Belongs to Tenant (Critical for isolation), Project, and Assignee.
+### Tenant Management
+- `GET /api/tenants` (Super Admin)
+- `GET /api/tenants/:tenantId` (Auth Required)
+- `PUT /api/tenants/:tenantId` (Admin/Super Admin)
 
-#### Table: AuditLogs
-*   **Description:** Security trail of actions.
-*   **Columns:** `id`, `tenant_id`, `user_id`, `action` (e.g., 'CREATE_PROJECT'), `ip_address`, `timestamp`.
+### User Management
+- `POST /api/tenants/:tenantId/users` (Tenant Admin)
+- `GET /api/tenants/:tenantId/users` (Auth Required)
+- `PUT /api/users/:userId` (Tenant Admin/Self)
+- `DELETE /api/users/:userId` (Tenant Admin)
 
----
+### Project Management
+- `POST /api/projects` (Auth Required)
+- `GET /api/projects` (Auth Required)
+- `PUT /api/projects/:projectId` (Auth Required)
+- `DELETE /api/projects/:projectId` (Auth Required)
 
-## 3. API Specification
+### Task Management
+- `POST /api/projects/:projectId/tasks` (Auth Required)
+- `GET /api/projects/:projectId/tasks` (Auth Required)
+- `GET /api/tasks/:taskId` (Auth Required)
+- `PUT /api/tasks/:taskId` (Auth Required)
+- `PATCH /api/tasks/:taskId/status` (Auth Required)
+- `DELETE /api/tasks/:taskId` (Auth Required)
 
-All API endpoints are prefixed with `/api`.
-**Common Headers:** `Authorization: Bearer <token>` (Required for all except Auth).
-
-### 3.1 Module: Authentication
-*   `POST /api/auth/register-tenant` : Register a new Tenant Organization + Admin User. (Public)
-*   `POST /api/auth/login` : Login with Email/Password + Subdomain. Returns JWT. (Public)
-*   `GET /api/auth/me` : Get current logged-in user details & role. (Auth)
-*   `POST /api/auth/logout` : Invalidate session (Client side). (Auth)
-
-### 3.2 Module: Tenant Management
-*   `GET /api/tenants` : List all tenants. (Super Admin Only)
-*   `GET /api/tenants/:id` : Get details of a specific tenant. (Tenant Admin / Super Admin)
-*   `PUT /api/tenants/:id` : Update tenant details (e.g., Name). (Tenant Admin)
-
-### 3.3 Module: User Management
-*   `POST /api/tenants/:tenantId/users` : Add a new user to the tenant. Checks subscription limits. (Tenant Admin)
-*   `GET /api/tenants/:tenantId/users` : List users in the tenant. (Auth)
-*   `PUT /api/users/:userId` : Update user profile or role. (Tenant Admin / Self)
-*   `DELETE /api/users/:userId` : Remove a user. (Tenant Admin)
-
-### 3.4 Module: Project Management
-*   `POST /api/projects` : Create a new project. Checks subscription limits. (Auth)
-*   `GET /api/projects` : List all projects for the current tenant. (Auth)
-*   `GET /api/projects/:id` : Get specific project details. (Auth)
-*   `PUT /api/projects/:id` : Update project. (Creator / Tenant Admin)
-*   `DELETE /api/projects/:id` : Delete project (Cascades to tasks). (Creator / Tenant Admin)
-
-### 3.5 Module: Task Management
-*   `POST /api/projects/:projectId/tasks` : Create a task within a project. (Auth)
-*   `GET /api/projects/:projectId/tasks` : List tasks for a project. (Auth)
-*   `PUT /api/tasks/:id` : Update task details. (Auth)
-*   `PATCH /api/tasks/:id/status` : Quick update for task status (Kanban drag-and-drop). (Auth)
-*   `DELETE /api/tasks/:id` : Delete a task. (Auth)
+### System
+- `GET /api/health` (Public)
