@@ -1,57 +1,37 @@
-# Multi-Tenant SaaS Platform
+# SaaS Project Management System
 
-A production-ready SaaS platform with project & task management capabilities, featuring complete data isolation, role-based access control, and subscription management.
-
-## Project Structure
-
-```
-saas-platform/
-├── backend/            # Express.js REST API
-├── frontend/           # React.js Frontend
-├── database/           # Migrations and Seeds
-└── docker-compose.yml  # Docker Orchestration
-```
+A production-ready, multi-tenant SaaS application for project and task management.
 
 ## Features
-
-- **Multi-Tenancy**: Data isolation via tenant_id.
-- **Authentication**: JWT-based auth with RBAC (Super Admin, Tenant Admin, User).
-- **Subscription Management**: Free, Pro, and Enterprise plans with limits.
-- **Dockerized**: Complete environment setup with one command.
+- **Multi-Tenancy**: Data isolation using Shared Database, Shared Schema strategy with `tenant_id`.
+- **Authentication**: JWT-based auth with Role-Based Access Control (RBAC).
+- **Tenant Management**: Create and manage organizations with subscription limits.
+- **Projects & Tasks**: Full project management capabilities.
+- **Premium UI**: Modern, glassmorphism-inspired interface.
 
 ## Tech Stack
-
-- **Backend**: Node.js, Express, Sequelize, PostgreSQL
-- **Frontend**: React, Axios, Context API
-- **DevOps**: Docker, Docker Compose
-
-## Prerequisites
-
-- Docker Desktop installed and running.
+- **Backend**: Node.js, Express, PostgreSQL
+- **Frontend**: React, Vite, Vanilla CSS (Premium Design)
+- **Infrastructure**: Docker, Docker Compose
 
 ## Quick Start
 
-1. **Clone the repository** (if not already done).
-
-2. **Navigate to the project root**:
+1. **Clone the repository** (if applicable).
+2. **Run with Docker**:
    ```bash
-   cd saas-platform
+   docker-compose up --build
    ```
+3. **Access App**: [http://localhost:3000](http://localhost:3000)
 
-3. **Start the application**:
-   ```bash
-   docker-compose up -d --build
-   ```
+## Credentials (Seed Data)
+| Role | Email | Password | Tenant |
+|------|-------|----------|--------|
+| **Super Admin** | `superadmin@system.com` | `Admin@123` | N/A |
+| **Tenant Admin** | `admin@demo.com` | `Demo@123` | `demo` |
+| **User** | `user1@demo.com` | `User@123` | `demo` |
 
-4. **Verify services**:
-   - Frontend: [http://localhost:3000](http://localhost:3000)
-   - Backend Health: [http://localhost:5000/api/health](http://localhost:5000/api/health)
-   - Database: Port 5432
-
-## Environment Variables
-
-Default development variables are provided in `docker-compose.yml`. For local development without Docker, copy `backend/.env.example` to `backend/.env`.
-
-## Architecture
-
-(Architecture documentation to be added in `docs/architecture.md`)
+## Documentation
+See `docs/` folder for:
+- [Architecture](docs/architecture.md)
+- [PRD](docs/PRD.md)
+- [Technical Spec](docs/technical-spec.md)
