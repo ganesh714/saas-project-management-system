@@ -2,20 +2,18 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Install Netcat for DB wait check
-RUN apk add --no-cache netcat-openbsd
-
 COPY package*.json ./
 
+RUN apk --no-cache add curl
 RUN npm install
 
 COPY . .
 
-# Copy entrypoint script
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+# Add a script to handle migrations and seed before starting
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 EXPOSE 5000
 
-ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["npm", "start"]
+# Use the entrypoint script
+CMD ["/app/entrypoint.sh"]
