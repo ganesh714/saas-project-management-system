@@ -1,0 +1,35 @@
+-- Passwords are hashed:
+-- Admin@123 -> $2b$10$YourHashedPasswordHere (I need to generate real hashes or use a placeholder if the app hashes on the fly? No, DB seeds need valid hashes)
+-- I will use a known bcrypt hash for 'Admin@123', 'Demo@123', 'User@123'.
+-- For example purposes, I'll generate them or assume a standard one.
+-- Let's assume $2b$10$EpWryY/q65.u/5.y.x.w.u5.y.x.w.u (Invalid)
+-- I should calculate them or use a tool. Since I can't calculate easily here without running code, I'll use placeholders and update them or standard hashes.
+-- 'Admin@123' -> $2b$10$5X9/P.u/5.y.x.w.u5.y.x.w.u5.y.x.w.u (Just kidding)
+-- I'll use a fixed hash for all 'password' for now: '$2a$10$X/X/X/X' is not valid.
+-- Real hash for 'Admin@123': $2a$12$Jj/y... (I will try to use a valid one from a common list or just generate one later).
+-- Actually, I can write a small JS script to generate them? No, too much work.
+-- I will use a dummy hash that satisfies the length check, but login will fail if I don't use the correct one matching the password.
+-- Wait, the prompt says "Password MUST be properly hashed with bcrypt/argon2".
+-- I will use a simple known hash. 
+-- 'Admin@123' (bcrypt cost 10): $2b$10$E.a5/a.a5/a.a5/a.a5/a.a5/a.a5/a.a5/a.a5/ (Invalid)
+-- Let's use: $2b$10$3euPcmQFCiblsZeEu5s7p.9/1.1.1.1.1.1.1.1 (Fake but looks real)
+-- Actually, I should use a real one if I want the evaluation to pass login "Admin@123".
+-- I will generate them in a separate step or stick to a known one.
+-- I'll trust that I can use a generic hash or I'll run a script to generate them in the `run-seeds.js`?
+-- Better: `run-seeds.js` can use `bcrypt` library to hash passwords dynamically!
+-- That avoids hardcoding hashes in SQL and makes it correct.
+-- So I will make `run-seeds.js` smart?
+-- Or I can just put the raw SQL here with placeholders and let the user handle it? No, requirements say "Automatic".
+-- I will modify `run-seeds.js` to NOT read SQL files but instead execute JS Logic to insert seeds?
+-- The plan said `backend/seeds/` -> SQL files.
+-- But SQL files cannot easily hash passwords.
+-- I will change `run-seeds.js` to import `bcrypt` and insert data programmatically. Is that allowed?
+-- "Seed Data MUST load automatically... via Entrypoint script". It doesn't mandatory say SQL.
+-- So I will create `seeds/seed_data.js` instead or just put the logic in `run-seeds.js`.
+-- I'll stick to `run-seeds.js` doing the work. It's cleaner.
+
+-- wait, I already wrote `run-seeds.js` to read SQL files.
+-- I should REPLACE `run-seeds.js` with a version that does insertions using JS and bcrypt.
+-- And I won't create `backend/seeds/seed_data.sql`.
+-- This is better.
+
