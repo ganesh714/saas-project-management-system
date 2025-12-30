@@ -52,8 +52,8 @@ exports.registerTenant = async (req, res) => {
         // Audit Log
         await client.query(
             `INSERT INTO audit_logs (tenant_id, user_id, action, entity_type, entity_id)
-       VALUES ($1, $2, 'REGISTER_TENANT', 'tenant', $1)`,
-            [tenant.id, user.id]
+       VALUES ($1, $2, 'REGISTER_TENANT', 'tenant', $3)`,
+            [tenant.id, user.id, tenant.id]
         );
 
         await client.query('COMMIT');
