@@ -18,15 +18,54 @@ A production-ready, multi-tenant SaaS application for project and task managemen
 - **Frontend**: React, Vite, Vanilla CSS (Premium Design)
 - **Infrastructure**: Docker, Docker Compose
 
-## Quick Start
+## Installation & Setup
 
-1. **Clone the repository** (if applicable).
-2. **Run with Docker**:
-   ```bash
-   docker-compose up --build
+### Prerequisites
+*   Docker & Docker Compose
+*   Node.js v18+ (for local development)
+
+### Environment Variables
+The application comes with pre-configured environment variables in `docker-compose.yml` for simplicity.
+However, for local development, create a `.env` file in the `backend` directory:
+
+```env
+PORT=5000
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=saas_db
+DB_USER=postgres
+DB_PASSWORD=postgres
+JWT_SECRET=supersecretkey
+JWT_EXPIRES_IN=24h
+FRONTEND_URL=http://localhost:3000
+```
+
+### Running with Docker (Recommended)
+1.  Clone the repository.
+2.  Run the following command in the root directory:
+    ```bash
+    docker-compose up -d --build
     ```
+3.  Access the application:
+    *   **Frontend:** [http://localhost:3000](http://localhost:3000)
+    *   **Backend:** [http://localhost:5000](http://localhost:5000)
 
-3. **Access App**: [http://localhost:3000](https://www.google.com/search?q=http://localhost:3000)
+### Running Locally
+1.  **Database:** Ensure PostgreSQL is running.
+2.  **Backend:**
+    ```bash
+    cd backend
+    npm install
+    npm run migrate
+    npm run seed
+    npm start
+    ```
+3.  **Frontend:**
+    ```bash
+    cd frontend
+    npm install
+    npm run dev
+    ```
 
 ## Credentials (Seed Data)
 
