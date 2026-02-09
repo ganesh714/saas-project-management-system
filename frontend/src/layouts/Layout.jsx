@@ -12,38 +12,42 @@ const Layout = () => {
         <div className="layout-container">
             {/* Sidebar */}
             <aside className="sidebar">
-                <div style={{ marginBottom: '3rem', paddingLeft: '0.5rem' }}>
-                    <h2 style={{ fontSize: '1.5rem', fontWeight: '800', background: 'linear-gradient(to right, #fff, #a5b4fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: 0 }}>
-                        Nexus<span style={{ color: 'var(--primary-color)' }}>SaaS</span>
+                <div className="sidebar-header mb-6">
+                    <h2 style={{ fontSize: '1.5rem', fontWeight: '800', background: 'var(--primary-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: 0 }}>
+                        Nexus<span style={{ color: '#fff' }}>SaaS</span>
                     </h2>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
                         {user?.tenant ? user.tenant.name : 'System Administration'}
                     </div>
                 </div>
 
-                <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
+                <nav className="flex-col gap-2" style={{ flex: 1 }}>
                     <Link to="/dashboard" className={`nav-link ${isActive('/dashboard')}`}>
-                        <span>📊</span> Dashboard
+                        <span className="nav-icon">📊</span> 
+                        <span>Dashboard</span>
                     </Link>
                     <Link to="/projects" className={`nav-link ${isActive('/projects')}`}>
-                        <span>🚀</span> Projects
+                        <span className="nav-icon">🚀</span> 
+                        <span>Projects</span>
                     </Link>
 
                     {user?.role === 'tenant_admin' && (
                         <Link to="/users" className={`nav-link ${isActive('/users')}`}>
-                            <span>👥</span> Team
+                            <span className="nav-icon">👥</span> 
+                            <span>Team</span>
                         </Link>
                     )}
                     {user?.role === 'super_admin' && (
                         <Link to="/tenants" className={`nav-link ${isActive('/tenants')}`}>
-                            <span>🏢</span> Tenants
+                            <span className="nav-icon">🏢</span> 
+                            <span>Tenants</span>
                         </Link>
                     )}
                 </nav>
 
-                <div className="glass-panel" style={{ padding: '1rem', marginTop: 'auto' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                        <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--primary-gradient)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1rem' }}>
+                <div className="sidebar-footer glass-panel p-4 mt-4">
+                    <div className="flex-start mb-4">
+                        <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--primary-gradient)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1rem', color: 'white', flexShrink: 0 }}>
                             {user?.full_name?.charAt(0)}
                         </div>
                         <div style={{ overflow: 'hidden' }}>
@@ -56,9 +60,6 @@ const Layout = () => {
                     </button>
                 </div>
             </aside>
-
-            {/* Mobile Nav Placeholder */}
-            {/* Ideally would have a hamburger menu here for mobile */}
 
             {/* Main Content */}
             <main className="main-content">
