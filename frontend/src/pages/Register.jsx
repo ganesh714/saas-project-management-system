@@ -31,18 +31,21 @@ const Register = () => {
     };
 
     return (
-        <div className="flex-center" style={{ minHeight: '100vh', padding: '1rem' }}>
-             <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '550px', padding: '2.5rem' }}>
+        <div className="flex-center" style={{ minHeight: '100vh', padding: '1rem', position: 'relative' }}>
+            {/* Background Decor */}
+            <div style={{ position: 'absolute', bottom: '20%', right: '20%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(168, 85, 247, 0.2) 0%, transparent 70%)', filter: 'blur(40px)', zIndex: -1 }}></div>
+
+            <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '550px', padding: '2.5rem' }}>
                 <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
                     <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem', background: 'var(--primary-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Start Your Journey</h1>
                     <p style={{ color: 'var(--text-secondary)' }}>Create a new organization workspace</p>
                 </div>
 
-                {error && <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#fca5a5', padding: '0.75rem', borderRadius: '0.5rem', marginBottom: '1.5rem', fontSize: '0.9rem', textAlign: 'center' }}>{error}</div>}
+                {error && <div className="mb-6" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#fca5a5', padding: '0.75rem', borderRadius: '0.5rem', fontSize: '0.9rem', textAlign: 'center' }}>{error}</div>}
 
                 <form onSubmit={handleSubmit}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                        <div className="input-group">
+                    <div className="grid-auto gap-4 mb-4" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                        <div className="input-group mb-0">
                             <label className="input-label">Organization Name</label>
                             <input
                                 type="text"
@@ -53,7 +56,7 @@ const Register = () => {
                                 placeholder="Acme Corp"
                             />
                         </div>
-                        <div className="input-group">
+                        <div className="input-group mb-0">
                             <label className="input-label">Subdomain</label>
                             <input
                                 type="text"
@@ -102,12 +105,12 @@ const Register = () => {
                         />
                     </div>
 
-                    <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={isLoading}>
+                    <button type="submit" className="btn btn-primary mt-4" style={{ width: '100%' }} disabled={isLoading}>
                         {isLoading ? <div className="spinner" style={{ width: '20px', height: '20px', borderWidth: '2px' }}></div> : 'Create Workspace'}
                     </button>
                 </form>
 
-                <div style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                <div className="mt-4" style={{ textAlign: 'center', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
                     Already have an account? <Link to="/login" style={{ color: 'var(--primary-color)', fontWeight: '600' }}>Sign In</Link>
                 </div>
             </div>
