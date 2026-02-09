@@ -38,7 +38,7 @@ const Login = () => {
                     <p style={{ color: 'var(--text-secondary)' }}>Sign in to your workspace</p>
                 </div>
 
-                {error && <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#fca5a5', padding: '0.75rem', borderRadius: '0.5rem', marginBottom: '1.5rem', fontSize: '0.9rem', textAlign: 'center' }}>{error}</div>}
+                {error && <div className="mb-6" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#fca5a5', padding: '0.75rem', borderRadius: '0.5rem', fontSize: '0.9rem', textAlign: 'center' }}>{error}</div>}
 
                 <form onSubmit={handleSubmit}>
                     <div className="input-group">
@@ -73,18 +73,18 @@ const Login = () => {
                                 onChange={(e) => setFormData({ ...formData, subdomain: e.target.value })}
                                 required
                                 placeholder="e.g. demo"
-                                style={{ paddingRight: '60px' }}
+                                style={{ paddingRight: '100px' }}
                             />
-                            <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '0.8rem', pointerEvents: 'none' }}>.saas.com</span>
+                            <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '0.8rem', pointerEvents: 'none' }}>.saas-app.com</span>
                         </div>
                     </div>
                     
-                    <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={isLoading}>
+                    <button type="submit" className="btn btn-primary mt-4" style={{ width: '100%' }} disabled={isLoading}>
                         {isLoading ? <div className="spinner" style={{ width: '20px', height: '20px', borderWidth: '2px' }}></div> : 'Sign In'}
                     </button>
                 </form>
 
-                <div style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                <div className="mt-4" style={{ textAlign: 'center', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
                     New organization? <Link to="/register" style={{ color: 'var(--primary-color)', fontWeight: '600' }}>Create Account</Link>
                 </div>
             </div>
