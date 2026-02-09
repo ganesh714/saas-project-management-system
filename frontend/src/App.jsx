@@ -9,6 +9,8 @@ import Projects from './pages/Projects';
 import ProjectDetails from './pages/ProjectDetails';
 import Users from './pages/Users';
 
+import Tenants from './pages/Tenants';
+
 // Protected Route Guard
 const ProtectedRoute = ({ children }) => {
     const { user, loading } = useAuth();
@@ -16,9 +18,6 @@ const ProtectedRoute = ({ children }) => {
     if (!user) return <Navigate to="/login" />;
     return children;
 };
-
-// Placeholder Pages for now
-const Tenants = () => <h1>Tenants (Super Admin Only)</h1>;
 
 function App() {
     return (
