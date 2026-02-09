@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { api } from '../services/api';
+import api from '../services/api';
 import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
@@ -17,12 +17,12 @@ const Dashboard = () => {
         const fetchDashboardData = async () => {
             try {
                 const projectsRes = await api.get('/projects');
-                const projects = projectsRes.data;
+                const projects = projectsRes.data.data.projects || [];
 
                 setStats({
                     projects: projects.length,
-                    tasks: projects.reduce((acc, curr) => acc + (curr.task_count || 0), 0),
-                    completedTasks: 0 
+                    tasks: projects.reduce((acc, curr) => acc + (curr.taskCount || 0), 0),
+                    completedTasks: 0
                 });
 
                 setRecentProjects(projects.slice(0, 5));
@@ -40,39 +40,39 @@ const Dashboard = () => {
 
     return (
         <div className="animate-fade-in">
-            <header className="flex-between" style={{ marginBottom: '2rem' }}>
+            <header className="flex-between mb-6">
                 <div>
-                    <h1 style={{ marginBottom: '0.5rem' }}>Dashboard</h1>
+                    <h1 className="mb-2">Dashboard</h1>
                     <p style={{ color: 'var(--text-secondary)' }}>Welcome back, {user?.full_name}</p>
                 </div>
                 {user?.role === 'tenant_admin' && (
-                     <div className="badge badge-active" style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}>
+                    <div className="badge badge-active">
                         {user.tenant?.plan || 'Free'} Plan
                     </div>
                 )}
             </header>
 
             {/* Stats Grid */}
-            <div className="grid-auto" style={{ marginBottom: '2rem' }}>
-                <div className="glass-card" style={{ background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%)', borderLeft: '4px solid var(--primary-color)' }}>
-                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Total Projects</div>
-                    <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#fff' }}>{stats.projects}</div>
+            <div className="grid-auto mb-6">
+                <div className="glass-card p-6" style={{ background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%)', borderLeft: '4px solid var(--primary-color)' }}>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '0.3rem', marginLeft: '0.3rem' }}>Total Projects</div>
+                    <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#fff', marginLeft: '0.3rem' }}>{stats.projects}</div>
                 </div>
-                <div className="glass-card" style={{ background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(45, 212, 191, 0.1) 100%)', borderLeft: '4px solid #2dd4bf' }}>
-                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Active Tasks</div>
-                    <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#fff' }}>{stats.tasks}</div>
+                <div className="glass-card p-6" style={{ background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(45, 212, 191, 0.1) 100%)', borderLeft: '4px solid #2dd4bf' }}>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '0.3rem', marginLeft: '0.3rem' }}>Active Tasks</div>
+                    <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#fff', marginLeft: '0.3rem' }}>{stats.tasks}</div>
                 </div>
-                <div className="glass-card" style={{ background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(239, 68, 68, 0.1) 100%)', borderLeft: '4px solid #f59e0b' }}>
-                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Pending Review</div>
-                    <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#fff' }}>--</div>
+                <div className="glass-card p-6" style={{ background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(239, 68, 68, 0.1) 100%)', borderLeft: '4px solid #f59e0b' }}>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '0.3rem', marginLeft: '0.3rem' }}>Pending Review</div>
+                    <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#fff', marginLeft: '0.3rem' }}>0</div>
                 </div>
             </div>
 
             {/* Recent Activity / Projects */}
-            <div className="glass-card">
-                <div className="flex-between" style={{ marginBottom: '1.5rem' }}>
-                    <h3>Recent Projects</h3>
-                    <Link to="/projects" className="btn btn-secondary" style={{ fontSize: '0.8rem' }}>View All</Link>
+            <div className="glass-card p-6">
+                <div className="flex-between mb-4">
+                    <h3 style={{ marginTop: '0.3rem', marginLeft: '0.5rem' }}>Recent Projects</h3>
+                    <Link to="/projects" className="btn btn-secondary" style={{ fontSize: '0.8rem', marginRight: '0.5rem' }}>View All</Link>
                 </div>
 
                 {recentProjects.length > 0 ? (
