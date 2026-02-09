@@ -1,119 +1,101 @@
-# System Architecture
+# System Architecture Design
 
-## 1. High-Level Architecture
-
-The system follows a typical 3-tier architecture containerized with Docker.
+## 1. System Architecture Diagram
 
 ```mermaid
 graph TD
-    Client[Client Browser] -->|HTTP/REST| LB[Nginx/Load Balancer]
-    LB -->|Port 3000| Frontend[React Frontend Container]
-    LB -->|Port 5000| Backend[Node.js Backend Container]
-    Backend -->|Port 5432| DB[PostgreSQL Container]
+    Client[Client Browser] -->|HTTP/REST| Frontend[Frontend (React/Vite)]
+    Frontend -->|HTTP/REST| Backend[Backend (Node.js/Express)]
+    Backend -->|SQL| Database[(PostgreSQL)]
     
     subgraph Docker Network
-        Frontend
         Backend
-        DB
+        Database
+        Frontend
     end
+
+    classDef container fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    class Backend,Database,Frontend container;
 ```
 
-## 2. Database Schema (ERD)
+*(Note: See below for the visual representation)*
+
+![System Architecture](images/system_architecture_diagram.png)
+
+## 2. Database Schema Design (ERD)
+
+The database uses a **Shared Schema** approach. All tables (except strict system tables if any) have a `tenant_id` foreign key.
 
 ```mermaid
 erDiagram
-    TENANTS ||--o{ USERS : has
-    TENANTS ||--o{ PROJECTS : owns
-    TENANTS ||--o{ AUDIT_LOGS : generates
-    PROJECTS ||--o{ TASKS : contains
-    USERS ||--o{ TASKS : assigned_to
-    USERS ||--o{ PROJECTS : created_by
-
+    TENANTS ||--o{ USERS : "has"
+    TENANTS ||--o{ PROJECTS : "has"
+    TENANTS ||--o{ TASKS : "has"
     TENANTS {
         uuid id PK
         string name
-        string subdomain UK
+        string subdomain
         enum status
         enum subscription_plan
-        int max_users
-        int max_projects
-        timestamp created_at
     }
-
     USERS {
         uuid id PK
         uuid tenant_id FK
         string email
         string password_hash
-        string full_name
-        enum role
-        boolean is_active
+        string role
     }
-
     PROJECTS {
         uuid id PK
         uuid tenant_id FK
         string name
-        text description
         enum status
-        uuid created_by FK
     }
-
     TASKS {
         uuid id PK
+        uuid tenant_id FK
         uuid project_id FK
-        uuid tenant_id FK
         string title
-        text description
         enum status
-        enum priority
-        uuid assigned_to FK
-        date due_date
     }
-
-    AUDIT_LOGS {
-        uuid id PK
-        uuid tenant_id FK
-        uuid user_id FK
-        string action
-        string entity_type
-        string entity_id
-        timestamp created_at
-    }
+    PROJECTS ||--o{ TASKS : "contains"
+    USERS ||--o{ TASKS : "assigned_to"
 ```
+
+### Core Tables & Relationships
+1.  **Tenants:** root entity.
+2.  **Users:** Belong to a tenant. `tenant_id` FK. Unique email per tenant.
+3.  **Projects:** Belong to a tenant. `tenant_id` FK.
+4.  **Tasks:** Belong to a project AND a tenant (denormalized `tenant_id` for easier queries/isolation).
+5.  **Audit Logs:** Record actions.
 
 ## 3. API Architecture
 
 ### Authentication
-- `POST /api/auth/register-tenant` (Public)
-- `POST /api/auth/login` (Public)
-- `GET /api/auth/me` (Auth Required)
-- `POST /api/auth/logout` (Auth Required)
+*   `POST /api/auth/register-tenant` - Register new organization
+*   `POST /api/auth/login` - Login user
+*   `GET /api/auth/me` - Get current user profile
+*   `POST /api/auth/logout` - Logout
 
 ### Tenant Management
-- `GET /api/tenants` (Super Admin)
-- `GET /api/tenants/:tenantId` (Auth Required)
-- `PUT /api/tenants/:tenantId` (Admin/Super Admin)
+*   `GET /api/tenants` - List all tenants (Super Admin only)
+*   `GET /api/tenants/:tenantId` - Get details
+*   `PUT /api/tenants/:tenantId` - Update details
 
 ### User Management
-- `POST /api/tenants/:tenantId/users` (Tenant Admin)
-- `GET /api/tenants/:tenantId/users` (Auth Required)
-- `PUT /api/users/:userId` (Tenant Admin/Self)
-- `DELETE /api/users/:userId` (Tenant Admin)
+*   `GET /api/tenants/:tenantId/users` - List users
+*   `POST /api/tenants/:tenantId/users` - Add user
+*   `PUT /api/users/:userId` - Update user
+*   `DELETE /api/users/:userId` - Delete user
 
 ### Project Management
-- `POST /api/projects` (Auth Required)
-- `GET /api/projects` (Auth Required)
-- `PUT /api/projects/:projectId` (Auth Required)
-- `DELETE /api/projects/:projectId` (Auth Required)
+*   `GET /api/projects` - List projects
+*   `POST /api/projects` - Create project
+*   `PUT /api/projects/:projectId` - Update project
+*   `DELETE /api/projects/:projectId` - Delete project
 
 ### Task Management
-- `POST /api/projects/:projectId/tasks` (Auth Required)
-- `GET /api/projects/:projectId/tasks` (Auth Required)
-- `GET /api/tasks/:taskId` (Auth Required)
-- `PUT /api/tasks/:taskId` (Auth Required)
-- `PATCH /api/tasks/:taskId/status` (Auth Required)
-- `DELETE /api/tasks/:taskId` (Auth Required)
-
-### System
-- `GET /api/health` (Public)
+*   `GET /api/projects/:projectId/tasks` - List tasks
+*   `POST /api/projects/:projectId/tasks` - Create task
+*   `PUT /api/tasks/:taskId` - Update task
+*   `PATCH /api/tasks/:taskId/status` - Quick status update
