@@ -162,6 +162,40 @@ exports.getProjects = async (req, res) => {
     }
 };
 
+// Get Single Project
+exports.getProject = async (req, res) => {
+    const { projectId } = req.params;
+    const tenantId = req.user.tenantId;
+
+    try {
+        const projectRes = await pool.query(`
+            SELECT p.*, u.full_name as creator_name
+            FROM projects p
+            LEFT JOIN users u ON p.created_by = u.id
+            WHERE p.id = $1
+        `, [projectId]);
+
+        if (projectRes.rowCount === 0) {
+            return res.status(404).json({ success: false, message: 'Project not found' });
+        }
+
+        const project = projectRes.rows[0];
+
+        // Authorization Check
+        if (project.tenant_id !== tenantId && req.user.role !== 'super_admin') {
+            return res.status(404).json({ success: false, message: 'Project not found' });
+        }
+
+        res.status(200).json({
+            success: true,
+            data: project
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+};
+
 // Update Project
 exports.updateProject = async (req, res) => {
     const { projectId } = req.params;
