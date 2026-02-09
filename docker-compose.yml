@@ -64,6 +64,9 @@ services:
       # AND "Frontend is accessible at http://localhost:3000".
       # REACT_APP_API_URL should likely be http://localhost:5000 for client-side calls.
       VITE_API_URL: http://localhost:5000/api
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     depends_on:
       backend:
         condition: service_healthy
