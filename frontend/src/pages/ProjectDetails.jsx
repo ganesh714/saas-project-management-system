@@ -18,16 +18,16 @@ const ProjectDetails = () => {
         setLoading(true);
         try {
             const [projRes, tasksRes] = await Promise.all([
-                api.get(`/projects/${projectId}`), // Assuming this endpoint exists and works
+                api.get(`/projects/${projectId}`),
                 api.get(`/projects/${projectId}/tasks?limit=100`)
             ]);
-            setProject(projRes.data.data || projRes.data); // Adjust based on controller return
-            setTasks(tasksRes.data.data.tasks);
+            setProject(projRes.data);
+            setTasks(tasksRes.data);
 
             // Fetch users for assignment if admin
             if (user.role === 'tenant_admin') {
-                const usersRes = await api.get(`/tenants/${user.tenantId}/users?limit=100`);
-                setUsers(usersRes.data.data.users);
+                const usersRes = await api.get(`/tenants/${user.tenant_id}/users?limit=100`);
+                setUsers(usersRes.data.users);
             }
         } catch (err) {
             console.error(err);
@@ -54,7 +54,7 @@ const ProjectDetails = () => {
     const handleStatusChange = async (taskId, newStatus) => {
         try {
             await api.patch(`/tasks/${taskId}/status`, { status: newStatus });
-            // Optimistic update or refresh
+            // Optimistic update
             setTasks(tasks.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
         } catch (err) {
             alert('Failed to update status');
@@ -71,16 +71,16 @@ const ProjectDetails = () => {
         }
     };
 
-    if (loading) return <div className="spinner"></div>;
-    if (!project) return <div>Project not found</div>;
+    if (loading) return <div className="flex-center" style={{ height: '50vh' }}><div className="spinner"></div></div>;
+    if (!project) return <div className="text-center" style={{ marginTop: '2rem' }}>Project not found</div>;
 
     return (
-        <div className="container">
+        <div className="animate-fade-in">
             <div style={{ marginBottom: '2rem' }}>
-                <Link to="/projects" style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>&larr; Back to Projects</Link>
+                <Link to="/projects" className="btn btn-secondary" style={{ marginBottom: '1rem', display: 'inline-block' }}>&larr; Back to Projects</Link>
                 <div className="flex-between" style={{ marginTop: '1rem' }}>
                     <div>
-                        <h1>{project.name}</h1>
+                        <h1 style={{ marginBottom: '0.5rem' }}>{project.name}</h1>
                         <p style={{ color: 'var(--text-secondary)' }}>{project.description}</p>
                     </div>
                     <div>
@@ -90,71 +90,76 @@ const ProjectDetails = () => {
             </div>
 
             {/* Task List */}
-            <div className="card">
-                <table className="table">
-                    <thead>
-                        <tr>
-                            <th>Task</th>
-                            <th>Assignee</th>
-                            <th>Priority</th>
-                            <th>Due Date</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {tasks.length === 0 ? <tr><td colSpan="6" style={{ textAlign: 'center' }}>No tasks yet</td></tr> : tasks.map(task => (
-                            <tr key={task.id}>
-                                <td>
-                                    <div style={{ fontWeight: '500' }}>{task.title}</div>
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{task.description}</div>
-                                </td>
-                                <td>
-                                    {task.assignedTo ? (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem' }}>
-                                                {task.assignedTo.fullName.charAt(0)}
-                                            </div>
-                                            {task.assignedTo.fullName}
-                                        </div>
-                                    ) : <span style={{ color: 'var(--text-secondary)' }}>Unassigned</span>}
-                                </td>
-                                <td>
-                                    <span style={{
-                                        color: task.priority === 'high' ? 'var(--danger)' : task.priority === 'medium' ? 'var(--warning)' : 'var(--success)',
-                                        textTransform: 'capitalize'
-                                    }}>{task.priority}</span>
-                                </td>
-                                <td>{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '-'}</td>
-                                <td>
-                                    <select
-                                        value={task.status}
-                                        onChange={(e) => handleStatusChange(task.id, e.target.value)}
-                                        className="input-field"
-                                        style={{ padding: '0.25rem', fontSize: '0.875rem', width: 'auto' }}
-                                    >
-                                        <option value="todo">To Do</option>
-                                        <option value="in_progress">In Progress</option>
-                                        <option value="completed">Completed</option>
-                                    </select>
-                                </td>
-                                <td>
-                                    <button onClick={() => handleDeleteTask(task.id)} className="btn" style={{ color: 'var(--danger)', padding: '0.25rem' }}>Delete</button>
-                                </td>
+            <div className="glass-card">
+                <div className="table-container">
+                    <table className="table">
+                        <thead>
+                            <tr>
+                                <th>Task</th>
+                                <th>Assignee</th>
+                                <th>Priority</th>
+                                <th>Due Date</th>
+                                <th>Status</th>
+                                <th>Actions</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {tasks.length === 0 ? <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>No tasks yet. Add one above!</td></tr> : tasks.map(task => (
+                                <tr key={task.id}>
+                                    <td>
+                                        <div style={{ fontWeight: '500', color: 'white' }}>{task.title}</div>
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{task.description}</div>
+                                    </td>
+                                    <td>
+                                        {task.assigned_to_user ? (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem' }}>
+                                                    {task.assigned_to_user.full_name.charAt(0)}
+                                                </div>
+                                                {task.assigned_to_user.full_name}
+                                            </div>
+                                        ) : <span style={{ color: 'var(--text-secondary)' }}>Unassigned</span>}
+                                    </td>
+                                    <td>
+                                        <span style={{
+                                            color: task.priority === 'high' ? '#f87171' : task.priority === 'medium' ? '#fbbf24' : '#34d399',
+                                            textTransform: 'capitalize',
+                                            fontWeight: '500'
+                                        }}>{task.priority}</span>
+                                    </td>
+                                    <td>{task.due_date ? new Date(task.due_date).toLocaleDateString() : '-'}</td>
+                                    <td>
+                                        <select
+                                            value={task.status}
+                                            onChange={(e) => handleStatusChange(task.id, e.target.value)}
+                                            className="input-field"
+                                            style={{ padding: '0.25rem', fontSize: '0.875rem', width: 'auto', minWidth: '120px' }}
+                                        >
+                                            <option value="todo">To Do</option>
+                                            <option value="in_progress">In Progress</option>
+                                            <option value="done">Done</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <button onClick={() => handleDeleteTask(task.id)} className="btn hover-danger" style={{ color: '#f87171', padding: '0.25rem', background: 'transparent' }}>
+                                            Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             {/* Task Modal */}
             {showTaskModal && (
                 <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+                    position: 'fixed', inset: 0,
+                    background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
                 }}>
-                    <div className="card glass" style={{ width: '500px', maxWidth: '90%' }}>
-                        <h2>Add Task</h2>
+                    <div className="glass-card" style={{ width: '100%', maxWidth: '500px', animation: 'fadeIn 0.2s ease-out' }}>
+                        <h2 style={{ marginBottom: '1.5rem' }}>Add Task</h2>
                         <form onSubmit={handleCreateTask}>
                             <div className="input-group">
                                 <label className="input-label">Title</label>
@@ -162,7 +167,7 @@ const ProjectDetails = () => {
                             </div>
                             <div className="input-group">
                                 <label className="input-label">Description</label>
-                                <textarea className="input-field" value={newTask.description} onChange={e => setNewTask({ ...newTask, description: e.target.value })} />
+                                <textarea className="input-field" value={newTask.description} onChange={e => setNewTask({ ...newTask, description: e.target.value })} rows="3" />
                             </div>
                             <div style={{ display: 'flex', gap: '1rem' }}>
                                 <div className="input-group" style={{ flex: 1 }}>
@@ -189,9 +194,9 @@ const ProjectDetails = () => {
                                     </select>
                                 </div>
                             )}
-                            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                                <button type="button" className="btn" style={{ background: 'transparent', border: '1px solid var(--border-color)', color: 'white' }} onClick={() => setShowTaskModal(false)}>Cancel</button>
-                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Create Task</button>
+                            <div className="flex-between" style={{ marginTop: '2rem' }}>
+                                <button type="button" className="btn btn-secondary" onClick={() => setShowTaskModal(false)}>Cancel</button>
+                                <button type="submit" className="btn btn-primary">Create Task</button>
                             </div>
                         </form>
                     </div>

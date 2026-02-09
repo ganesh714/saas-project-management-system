@@ -1,110 +1,110 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../services/api';
+import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
     const { user } = useAuth();
     const [stats, setStats] = useState({
-        totalProjects: 0,
-        totalTasks: 0,
-        completedTasks: 0,
-        pendingTasks: 0
+        projects: 0,
+        tasks: 0,
+        completedTasks: 0
     });
     const [recentProjects, setRecentProjects] = useState([]);
-    const [myTasks, setMyTasks] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchData = async () => {
+        const fetchDashboardData = async () => {
             try {
-                // Parallel fetching
-                const [projectsRes, tasksRes] = await Promise.all([
-                    api.get('/projects?limit=5'),
-                    api.get(`/tasks?assignedTo=${user.id}&limit=5&status=todo`)
-                ]);  // Let's assume I fix the backend in next step.
-                // For now, I'll assume projects work.
+                const projectsRes = await api.get('/projects');
+                const projects = projectsRes.data;
 
-                const projects = projectsRes.data.data.projects;
-                setRecentProjects(projects);
+                setStats({
+                    projects: projects.length,
+                    tasks: projects.reduce((acc, curr) => acc + (curr.task_count || 0), 0),
+                    completedTasks: 0 
+                });
 
-                // Calculate basic stats from projects (incomplete but something)
-                const totalProj = projectsRes.data.data.total;
-                setStats(s => ({ ...s, totalProjects: totalProj }));
-
-                // Tenant Admin Stats
-                if ((user.role === 'tenant_admin' || user.role === 'super_admin') && user.tenantId) {
-                    try {
-                        const tenantRes = await api.get(`/tenants/${user.tenantId}`);
-                        const tStats = tenantRes.data.data.stats;
-                        setStats({
-                            totalProjects: tStats.totalProjects,
-                            totalTasks: tStats.totalTasks,
-                            completedTasks: 0, // Backend stat doesn't have this breakdown, implies need to fetch
-                            pendingTasks: 0
-                        });
-                    } catch (e) { console.error("Tenant stat fetch fail", e); }
-                }
-
-                setLoading(false);
-            } catch (err) {
-                console.error(err);
+                setRecentProjects(projects.slice(0, 5));
+            } catch (error) {
+                console.error("Error fetching dashboard data:", error);
+            } finally {
                 setLoading(false);
             }
         };
 
-        if (user) fetchData();
-    }, [user]);
+        fetchDashboardData();
+    }, []);
 
-    if (loading) return <div className="spinner"></div>;
+    if (loading) return <div className="flex-center" style={{ height: '50vh' }}><div className="spinner"></div></div>;
 
     return (
-        <div className="container">
-            <h1>Dashboard</h1>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
-                Welcome back, {user.fullName}
-            </p>
-
-            {/* Stats Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-                <div className="card">
-                    <h3 style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Total Projects</h3>
-                    <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>{stats.totalProjects}</div>
+        <div className="animate-fade-in">
+            <header className="flex-between" style={{ marginBottom: '2rem' }}>
+                <div>
+                    <h1 style={{ marginBottom: '0.5rem' }}>Dashboard</h1>
+                    <p style={{ color: 'var(--text-secondary)' }}>Welcome back, {user?.full_name}</p>
                 </div>
-                <div className="card">
-                    <h3 style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Total Tasks</h3>
-                    <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>{stats.totalTasks}</div>
-                </div>
-                {/* Placeholders since backend stats are limited */}
-                <div className="card">
-                    <h3 style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Active Plan</h3>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', textTransform: 'capitalize' }}>{user.tenant?.subscriptionPlan || 'Free'}</div>
-                </div>
-            </div>
-
-            {/* Recent Projects */}
-            <h2 style={{ marginBottom: '1rem' }}>Recent Projects</h2>
-            <div style={{ display: 'grid', gap: '1rem' }}>
-                {recentProjects.length === 0 ? <p>No projects found.</p> : recentProjects.map(project => (
-                    <div key={project.id} className="card flex-between">
-                        <div>
-                            <h3 style={{ fontSize: '1.1rem' }}>
-                                <Link to={`/projects/${project.id}`} style={{ color: 'var(--primary-color)' }}>{project.name}</Link>
-                            </h3>
-                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{project.description}</p>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                            <span className={`badge badge-${project.status}`}>{project.status}</span>
-                            <div style={{ fontSize: '0.8rem', marginTop: '0.5rem', color: 'var(--text-secondary)' }}>
-                                {project.taskCount} Tasks
-                            </div>
-                        </div>
+                {user?.role === 'tenant_admin' && (
+                     <div className="badge badge-active" style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}>
+                        {user.tenant?.plan || 'Free'} Plan
                     </div>
-                ))}
+                )}
+            </header>
+
+            {/* Stats Grid */}
+            <div className="grid-auto" style={{ marginBottom: '2rem' }}>
+                <div className="glass-card" style={{ background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%)', borderLeft: '4px solid var(--primary-color)' }}>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Total Projects</div>
+                    <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#fff' }}>{stats.projects}</div>
+                </div>
+                <div className="glass-card" style={{ background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(45, 212, 191, 0.1) 100%)', borderLeft: '4px solid #2dd4bf' }}>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Active Tasks</div>
+                    <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#fff' }}>{stats.tasks}</div>
+                </div>
+                <div className="glass-card" style={{ background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(239, 68, 68, 0.1) 100%)', borderLeft: '4px solid #f59e0b' }}>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Pending Review</div>
+                    <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#fff' }}>--</div>
+                </div>
             </div>
 
-            <div style={{ marginTop: '2rem' }}>
-                <Link to="/projects" className="btn btn-primary">View All Projects</Link>
+            {/* Recent Activity / Projects */}
+            <div className="glass-card">
+                <div className="flex-between" style={{ marginBottom: '1.5rem' }}>
+                    <h3>Recent Projects</h3>
+                    <Link to="/projects" className="btn btn-secondary" style={{ fontSize: '0.8rem' }}>View All</Link>
+                </div>
+
+                {recentProjects.length > 0 ? (
+                    <div className="table-container">
+                        <table className="table">
+                            <thead>
+                                <tr>
+                                    <th>Project Name</th>
+                                    <th>Status</th>
+                                    <th>Created At</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {recentProjects.map(project => (
+                                    <tr key={project.id}>
+                                        <td style={{ fontWeight: '500' }}>{project.name}</td>
+                                        <td>
+                                            <span className={`badge badge-${project.status === 'active' ? 'active' : 'archived'}`}>
+                                                {project.status}
+                                            </span>
+                                        </td>
+                                        <td style={{ color: 'var(--text-secondary)' }}>{new Date(project.created_at).toLocaleDateString()}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
+                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                        No projects found. Start by creating one!
+                    </div>
+                )}
             </div>
         </div>
     );

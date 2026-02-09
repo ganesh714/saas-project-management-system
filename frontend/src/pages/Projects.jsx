@@ -1,22 +1,22 @@
 import React, { useEffect, useState } from 'react';
+import { api } from '../services/api';
 import { Link } from 'react-router-dom';
-import api from '../services/api';
 
 const Projects = () => {
     const [projects, setProjects] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
-    const [newProject, setNewProject] = useState({ name: '', description: '', status: 'active' });
+    const [formData, setFormData] = useState({ name: '', description: '', status: 'active' });
+    const [loading, setLoading] = useState(true);
 
     const fetchProjects = async () => {
-        setLoading(true);
         try {
-            const res = await api.get('/projects?limit=100');
-            setProjects(res.data.data.projects);
-        } catch (err) {
-            console.error(err);
+            const res = await api.get('/projects');
+            setProjects(res.data);
+        } catch (error) {
+            console.error("Failed to fetch projects", error);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     useEffect(() => {
@@ -26,63 +26,108 @@ const Projects = () => {
     const handleCreate = async (e) => {
         e.preventDefault();
         try {
-            await api.post('/projects', newProject);
+            await api.post('/projects', formData);
             setShowModal(false);
-            setNewProject({ name: '', description: '', status: 'active' });
+            setFormData({ name: '', description: '', status: 'active' });
             fetchProjects();
-        } catch (err) {
-            alert(err.response?.data?.message || 'Failed to create project');
+        } catch (error) {
+            alert('Failed to create project');
         }
     };
 
-    if (loading) return <div className="spinner"></div>;
+    if (loading) return <div className="flex-center" style={{ height: '50vh' }}><div className="spinner"></div></div>;
 
     return (
-        <div className="container">
+        <div className="animate-fade-in">
             <div className="flex-between" style={{ marginBottom: '2rem' }}>
-                <h1>Projects</h1>
-                <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ New Project</button>
+                <div>
+                    <h1>Projects</h1>
+                    <p style={{ color: 'var(--text-secondary)' }}>Manage your team's projects</p>
+                </div>
+                <button onClick={() => setShowModal(true)} className="btn btn-primary">
+                    <span>+</span> New Project
+                </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
-                {projects.map(project => (
-                    <div key={project.id} className="card" style={{ display: 'flex', flexDirection: 'column' }}>
-                        <div className="flex-between" style={{ marginBottom: '1rem' }}>
-                            <span className={`badge badge-${project.status}`}>{project.status}</span>
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>By {project.createdBy.fullName}</span>
-                        </div>
-                        <h3 style={{ marginBottom: '0.5rem' }}>{project.name}</h3>
-                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem', flex: 1 }}>
-                            {project.description}
-                        </p>
-                        <div className="flex-between" style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
-                            <span style={{ fontSize: '0.9rem' }}>{project.taskCount} Tasks</span>
-                            <Link to={`/projects/${project.id}`} className="btn" style={{ background: 'var(--bg-dark)' }}>View Details</Link>
-                        </div>
-                    </div>
-                ))}
+            <div className="glass-card">
+                <div className="table-container">
+                    <table className="table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Description</th>
+                                <th>Status</th>
+                                <th>Tasks</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {projects.map(project => (
+                                <tr key={project.id}>
+                                    <td style={{ fontWeight: '500', color: 'white' }}>{project.name}</td>
+                                    <td style={{ color: 'var(--text-secondary)' }}>{project.description}</td>
+                                    <td>
+                                        <span className={`badge badge-${project.status === 'active' ? 'active' : 'archived'}`}>
+                                            {project.status}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <span style={{ fontWeight: '600' }}>{project.task_count || 0}</span>
+                                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>tasks</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <Link to={`/projects/${project.id}`} className="btn btn-secondary" style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem' }}>
+                                            View Details
+                                        </Link>
+                                    </td>
+                                </tr>
+                            ))}
+                            {projects.length === 0 && (
+                                <tr>
+                                    <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                                        No projects found. Create one to get started.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             {/* Modal */}
             {showModal && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
-                }}>
-                    <div className="card glass" style={{ width: '400px', maxWidth: '90%' }}>
-                        <h2>Create Project</h2>
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+                    <div className="glass-card" style={{ width: '100%', maxWidth: '500px', animation: 'fadeIn 0.2s ease-out' }}>
+                        <h2 style={{ marginBottom: '1.5rem' }}>Create New Project</h2>
                         <form onSubmit={handleCreate}>
                             <div className="input-group">
                                 <label className="input-label">Project Name</label>
-                                <input className="input-field" value={newProject.name} onChange={e => setNewProject({ ...newProject, name: e.target.value })} required />
+                                <input
+                                    type="text"
+                                    className="input-field"
+                                    value={formData.name}
+                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                    required
+                                />
                             </div>
                             <div className="input-group">
                                 <label className="input-label">Description</label>
-                                <textarea className="input-field" value={newProject.description} onChange={e => setNewProject({ ...newProject, description: e.target.value })} />
+                                <textarea
+                                    className="input-field"
+                                    value={formData.description}
+                                    onChange={e => setFormData({ ...formData, description: e.target.value })}
+                                    rows="3"
+                                />
                             </div>
-                            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                                <button type="button" className="btn" style={{ background: 'transparent', border: '1px solid var(--border-color)', color: 'white' }} onClick={() => setShowModal(false)}>Cancel</button>
-                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Create</button>
+                            <div className="flex-between" style={{ marginTop: '2rem' }}>
+                                <button type="button" onClick={() => setShowModal(false)} className="btn btn-secondary">
+                                    Cancel
+                                </button>
+                                <button type="submit" className="btn btn-primary">
+                                    Create Project
+                                </button>
                             </div>
                         </form>
                     </div>

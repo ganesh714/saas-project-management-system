@@ -12,8 +12,8 @@ const Users = () => {
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            const res = await api.get(`/tenants/${user.tenantId}/users?limit=100`);
-            setUsers(res.data.data.users);
+            const res = await api.get(`/tenants/${user.tenant_id}/users`);
+            setUsers(res.data.users || res.data); // Adjust based on API structure
         } catch (err) {
             console.error(err);
         }
@@ -21,13 +21,13 @@ const Users = () => {
     };
 
     useEffect(() => {
-        if (user && user.tenantId) fetchUsers();
+        if (user && user.tenant_id) fetchUsers();
     }, [user]);
 
     const handleCreate = async (e) => {
         e.preventDefault();
         try {
-            await api.post(`/tenants/${user.tenantId}/users`, newUser);
+            await api.post(`/tenants/${user.tenant_id}/users`, newUser);
             setShowModal(false);
             setNewUser({ email: '', fullName: '', password: '', role: 'user' });
             fetchUsers();
@@ -47,54 +47,59 @@ const Users = () => {
         }
     };
 
-    if (loading) return <div className="spinner"></div>;
+    if (loading) return <div className="flex-center" style={{ height: '50vh' }}><div className="spinner"></div></div>;
 
     return (
-        <div className="container">
+        <div className="animate-fade-in">
             <div className="flex-between" style={{ marginBottom: '2rem' }}>
-                <h1>Team Members</h1>
+                <div>
+                    <h1>Team Members</h1>
+                    <p style={{ color: 'var(--text-secondary)' }}>Manage your organization's users</p>
+                </div>
                 <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ Add User</button>
             </div>
 
-            <div className="card">
-                <table className="table">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Role</th>
-                            <th>Status</th>
-                            <th>Joined</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {users.map(u => (
-                            <tr key={u.id}>
-                                <td>{u.full_name}</td>
-                                <td>{u.email}</td>
-                                <td><span style={{ textTransform: 'capitalize' }}>{u.role}</span></td>
-                                <td>{u.is_active ? 'Active' : 'Inactive'}</td>
-                                <td>{new Date(u.created_at).toLocaleDateString()}</td>
-                                <td>
-                                    {u.id !== user.id && (
-                                        <button onClick={() => handleDelete(u.id)} className="btn" style={{ color: 'var(--danger)', padding: '0.25rem' }}>Remove</button>
-                                    )}
-                                </td>
+            <div className="glass-card">
+                <div className="table-container">
+                    <table className="table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Joined</th>
+                                <th>Actions</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {users.length === 0 ? <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>No other users yet.</td></tr> : users.map(u => (
+                                <tr key={u.id}>
+                                    <td style={{ fontWeight: '500', color: 'white' }}>{u.full_name}</td>
+                                    <td>{u.email}</td>
+                                    <td><span className="badge badge-active" style={{ textTransform: 'capitalize' }}>{u.role}</span></td>
+                                    <td>{u.is_active ? 'Active' : 'Inactive'}</td>
+                                    <td>{new Date(u.created_at).toLocaleDateString()}</td>
+                                    <td>
+                                        {u.id !== user.id && (
+                                            <button onClick={() => handleDelete(u.id)} className="btn hover-danger" style={{ color: '#f87171', padding: '0.25rem', background: 'transparent' }}>Remove</button>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             {/* Modal */}
             {showModal && (
                 <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+                    position: 'fixed', inset: 0,
+                    background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
                 }}>
-                    <div className="card glass" style={{ width: '400px', maxWidth: '90%' }}>
-                        <h2>Add Team Member</h2>
+                    <div className="glass-card" style={{ width: '100%', maxWidth: '450px', animation: 'fadeIn 0.2s ease-out' }}>
+                        <h2 style={{ marginBottom: '1.5rem' }}>Add Team Member</h2>
                         <form onSubmit={handleCreate}>
                             <div className="input-group">
                                 <label className="input-label">Full Name</label>
@@ -105,7 +110,7 @@ const Users = () => {
                                 <input type="email" className="input-field" value={newUser.email} onChange={e => setNewUser({ ...newUser, email: e.target.value })} required />
                             </div>
                             <div className="input-group">
-                                <label className="input-label">Defaults Password</label>
+                                <label className="input-label">Default Password</label>
                                 <input type="text" className="input-field" value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} required />
                             </div>
                             <div className="input-group">
@@ -115,9 +120,9 @@ const Users = () => {
                                     <option value="tenant_admin">Admin</option>
                                 </select>
                             </div>
-                            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                                <button type="button" className="btn" style={{ background: 'transparent', border: '1px solid var(--border-color)', color: 'white' }} onClick={() => setShowModal(false)}>Cancel</button>
-                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Add Member</button>
+                            <div className="flex-between" style={{ marginTop: '2rem' }}>
+                                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
+                                <button type="submit" className="btn btn-primary">Add Member</button>
                             </div>
                         </form>
                     </div>
